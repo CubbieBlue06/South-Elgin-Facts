@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>15 Seconds of Fame - Geocache Mystery</title>
+  <style>
+    :root {
+      --primary-color: #ffd700;
+      --bg-color: #1a0033;
+      --card-bg: #2a085c;
+      --btn-bg: #4a158d;
+      --btn-hover: #6a1bb2;
+      --text-color: #ffffff;
+      --error-color: #ff4757;
+      --success-color: #2ed573;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .container {
+      background: var(--card-bg);
+      border: 4px solid var(--primary-color);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+      position: relative;
+      z-index: 10;
+    }
+
+    h1 {
+      color: var(--primary-color);
+      font-size: 2.2rem;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 2px 2px 4px #000;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+      color: #ddd;
+    }
+
+    .timer-container {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: #000;
+      border: 4px solid var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--primary-color);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+
+    .timer-low {
+      border-color: var(--error-color) !important;
+      color: var(--error-color) !important;
+      animation: pulse 0.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.08); }
+    }
+
+    .progress {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 15px;
+      color: var(--primary-color);
+    }
+
+    .question {
+      font-size: 1.25rem;
+      margin-bottom: 25px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.4;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .btn {
+      background: var(--btn-bg);
+      color: white;
+      border: 2px solid var(--primary-color);
+      padding: 15px 20px;
+      font-size: 1.1rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 600;
+    }
+
+    .btn:hover {
+      background: var(--btn-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .sad-face {
+      font-size: 6rem;
+      margin-bottom: 10px;
+      line-height: 1;
+    }
+
+    .fail-message {
+      font-size: 1.5rem;
+      color: var(--error-color);
+      margin-bottom: 25px;
+      font-weight: bold;
+    }
+
+    .coords-box {
+      background: #110022;
+      border: 2px dashed var(--primary-color);
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      font-size: 1.4rem;
+      color: var(--primary-color);
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="container">
+    <!-- START SCREEN -->
+    <div id="start-screen">
+      <h1>15 Seconds of Fame</h1>
+      <p class="subtitle">South Elgin Trivia Edition</p>
+      <p style="margin-bottom: 25px; line-height: 1.5;">
+        Test your knowledge of South Elgin, Illinois! Answer 5 questions in a row to reveal the final geocache coordinates.
+        <br><br>
+        <strong>Rules:</strong> You have 15 seconds per question. 3 choices. Make a mistake, and you start over!
+      </p>
+      <button class="btn" onclick="startGame()">Start Game Show</button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="hidden">
+      <div class="progress" id="progress-text">Question 1 of 5</div>
+      <div class="timer-container" id="timer-display">15</div>
+      <div class="question" id="question-text">Loading question...</div>
+      <div class="options" id="options-container"></div>
+    </div>
+
+    <!-- FAIL SCREEN -->
+    <div id="fail-screen" class="hidden">
+      <div class="sad-face">☹️</div>
+      <div class="fail-message" id="fail-reason">Brain fart!</div>
+      <p style="margin-bottom: 25px; font-size: 1.1rem;">You missed a question or ran out of time.</p>
+      <button class="btn" onclick="startGame()">Try Again</button>
+    </div>
+
+    <!-- WIN SCREEN -->
+    <div id="win-screen" class="hidden">
+      <h1>Winner!</h1>
+      <p class="subtitle">You conquered 15 Seconds of Fame!</p>
+      <p>Congratulations! Here are the final coordinates:</p>
+      <div class="coords-box">
+        N 42° 00.198′ W 88° 17.839′
+      </div>
+      <button class="btn" onclick="startGame()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    // --- QUESTION DATA (South Elgin, IL Facts) ---
+    const questions = [
+      {
+        question: "What major river runs directly through the heart of South Elgin?",
+        options: ["Des Plaines River", "Fox River", "Rock River"],
+        answer: 1
+      },
+      {
+        question: "South Elgin was originally incorporated under what name in 1897?",
+        options: ["Clintonville", "Elgin Junction", "Fox Valley Settlement"],
+        answer: 0
+      },
+      {
+        question: "Which popular museum located in South Elgin offers electric trolley rides along the river?",
+        options: ["Illinois Railway Museum", "Fox River Trolley Museum", "Midwest Railroad Heritage Center"],
+        answer: 1
+      },
+      {
+        question: "What historic nature preserve in South Elgin is famous for its natural springs and fens?",
+        options: ["Trout Park Nature Preserve", "Tekakwitha Woods", "SEBA Park & Fen"],
+        answer: 1
+      },
+      {
+        question: "What popular annual summer festival is hosted by South Elgin featuring carnival rides, food, and fireworks?",
+        options: ["Riverfest Express", "Fox River Days", "Heritage Fest"],
+        answer: 0
+      }
+    ];
+
+    const failMessages = [
+      "Brain fart!",
+      "Senior moment?",
+      "The Guessinator!",
+      "Clue-less Wonder!",
+      "A Swing and a miss!"
+    ];
+
+    // --- GAME STATE VARIABLES ---
+    let currentQuestionIndex = 0;
+    let timeLeft = 15;
+    let timerInterval = null;
+    let audioCtx = null;
+
+    // --- AUDIO SYNTHESIZER (No external MP3 files needed) ---
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playBeep(freq = 440, type = 'sine', duration = 0.1) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playSuccessSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, index) => {
+        setTimeout(() => playBeep(freq, 'triangle', 0.15), index * 80);
+      });
+    }
+
+    function playFailSound() {
+      if (!audioCtx) return;
+      setTimeout(() => playBeep(300, 'sawtooth', 0.2), 0);
+      setTimeout(() => playBeep(250, 'sawtooth', 0.2), 200);
+      setTimeout(() => playBeep(200, 'sawtooth', 0.4), 400);
+    }
+
+    // --- GAME LOGIC ---
+    function startGame() {
+      initAudio();
+      currentQuestionIndex = 0;
+      
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('fail-screen').classList.add('hidden');
+      document.getElementById('win-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+      
+      stopConfetti();
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      clearInterval(timerInterval);
+      timeLeft = 15;
+
+      const q = questions[currentQuestionIndex];
+      document.getElementById('progress-text').innerText = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+      document.getElementById('question-text').innerText = q.question;
+
+      const timerDisplay = document.getElementById('timer-display');
+      timerDisplay.innerText = timeLeft;
+      timerDisplay.classList.remove('timer-low');
+
+      const optionsContainer = document.getElementById('options-container');
+      optionsContainer.innerHTML = '';
+
+      q.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.innerText = opt;
+        btn.onclick = () => checkAnswer(index);
+        optionsContainer.appendChild(btn);
+      });
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.innerText = timeLeft;
+
+        if (timeLeft <= 5) {
+          timerDisplay.classList.add('timer-low');
+          playBeep(600, 'sine', 0.05);
+        } else {
+          playBeep(440, 'sine', 0.03);
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleFailure();
+        }
+      }, 1000);
+    }
+
+    function checkAnswer(selectedIndex) {
+      clearInterval(timerInterval);
+      const q = questions[currentQuestionIndex];
+
+      if (selectedIndex === q.answer) {
+        playSuccessSound();
+        triggerSuccessAnimation();
+        currentQuestionIndex++;
+
+        if (currentQuestionIndex < questions.length) {
+          setTimeout(loadQuestion, 600);
+        } else {
+          setTimeout(handleWin, 600);
+        }
+      } else {
+        handleFailure();
+      }
+    }
+
+    function handleFailure() {
+      playFailSound();
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('fail-screen').classList.remove('hidden');
+      
+      const randomMsg = failMessages[Math.floor(Math.random() * failMessages.length)];
+      document.getElementById('fail-reason').innerText = randomMsg;
+    }
+
+    function handleWin() {
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('win-screen').classList.remove('hidden');
+      startConfetti();
+    }
+
+    function triggerSuccessAnimation() {
+      const container = document.querySelector('.container');
+      container.style.borderColor = '#2ed573';
+      setTimeout(() => {
+        container.style.borderColor = '#ffd700';
+      }, 500);
+    }
+
+    // --- CONFETTI ANIMATION ---
+    let confettiParticles = [];
+    let confettiAnimationFrame = null;
+
+    function startConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      confettiParticles = Array.from({ length: 100 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        color: ['#ffd700', '#ff4757', '#2ed573', '#1e90ff', '#ffffff'][Math.floor(Math.random() * 5)],
+        size: Math.random() * 8 + 4,
+        speedY: Math.random() * 3 + 2,
+        speedX: Math.random() * 2 - 1
+      }));
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        confettiParticles.forEach(p => {
+          p.y += p.speedY;
+          p.x += p.speedX;
+          if (p.y > canvas.height) p.y = -10;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        confettiAnimationFrame = requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    function stopConfetti() {
+      if (confettiAnimationFrame) {
+        cancelAnimationFrame(confettiAnimationFrame);
+      }
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    window.addEventListener('resize', () => {
+      const canvas = document.getElementById('confetti-canvas');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>
+   
